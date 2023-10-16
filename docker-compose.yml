@@ -1,0 +1,10 @@
+version: "3.7"
+services:
+  smspanel-frontend:
+    container_name: smspanel-frontend
+    image: smspanel-frontend:latest
+    restart: unless-stopped
+    build: .
+    ports:
+      - "2000:3000"
+      - "24678:24678"

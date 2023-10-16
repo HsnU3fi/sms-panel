@@ -1,0 +1,200 @@
+<template>
+  <el-table
+      ref="multipleTableRef"
+      :data="tableData"
+      class="table  w-100"
+      v-if="tableData.length"
+      @selection-change="handleSelectionChange"
+
+  >
+    <el-table-column property="id" label="Id"
+    >
+      <template #header v-if="multipleSelection.length">
+      </template>
+    </el-table-column>
+    <el-table-column property="title" label="Title">
+      <template #header v-if="multipleSelection.length"></template>
+    </el-table-column>
+    <el-table-column property="text" label="text">
+      <template #header v-if="multipleSelection.length"></template>
+    </el-table-column>
+
+    <el-table-column property="created_at" label="Created At">
+      <template #header v-if="multipleSelection.length"></template>
+    </el-table-column>
+
+
+    <!--    <el-table-column width="20">-->
+    <!--      <template #default="scope">-->
+    <!--        <el-dropdown placement="left">-->
+    <!--          <button class="none">-->
+    <!--            <Icon name="dots"/>-->
+    <!--          </button>-->
+    <!--          <template #dropdown>-->
+    <!--            <el-dropdown-menu>-->
+    <!--              <el-dropdown-item @click="handlePermissions(scope.$index, scope.row)"-->
+    <!--              >-->
+    <!--                <Icon name="key"/>-->
+    <!--                Permissions-->
+    <!--              </el-dropdown-item-->
+    <!--              >-->
+    <!--              <el-dropdown-item @click="handleNumbers(scope.row)"-->
+    <!--              >-->
+    <!--                <Icon name="mobile"/>-->
+    <!--                Numbers-->
+    <!--              </el-dropdown-item-->
+    <!--              >-->
+    <!--              <el-dropdown-item @click="handleSetting(scope.row)"-->
+    <!--              >-->
+    <!--                <Icon name="gear"/>-->
+    <!--                Setting-->
+    <!--              </el-dropdown-item>-->
+
+    <!--              &lt;!&ndash;              <el-dropdown-item @click="handleDelete(scope.$index, scope.row)"&ndash;&gt;-->
+    <!--              &lt;!&ndash;              >&ndash;&gt;-->
+    <!--              &lt;!&ndash;                <Icon name="eye"/>&ndash;&gt;-->
+    <!--              &lt;!&ndash;                Edit&ndash;&gt;-->
+    <!--              &lt;!&ndash;              </el-dropdown-item&ndash;&gt;-->
+    <!--              &lt;!&ndash;              >&ndash;&gt;-->
+    <!--              <el-dropdown-item @click="deleteRow(scope.row)"-->
+    <!--              >-->
+    <!--                <Icon name="trash"/>-->
+    <!--                Delete-->
+    <!--              </el-dropdown-item-->
+    <!--              >-->
+    <!--            </el-dropdown-menu>-->
+    <!--          </template>-->
+    <!--        </el-dropdown>-->
+    <!--      </template-->
+    <!--      >-->
+    <!--    </el-table-column>-->
+  </el-table>
+  <Pagination
+      v-if="tableData.length"
+      :total="totalPage"
+      :currentPage="currentPage"
+      :itemPerPage="itemPerPage"
+      @changeHandler="getFastTextApi"
+      @itemPerPage="itemPerPage = $event"
+      @currentPage="currentPage = $event"
+  />
+  <NoData v-if="tableData.length == 0"/>
+  <ConfirmModal
+      :state="confirmDeleteState"
+      @confirm="deleteItemHandler"
+      @cancel="confirmDeleteState.isDialogOpen = false"
+  />
+
+  <Alert :title="alert.title" :show="alert.show" :variant="alert.variant" :alertType="alert.alertType"
+         :text="alert.text"/>
+
+</template>
+
+<script setup>
+import ConfirmModal from "@/components/TheConfirmModal/ConfirmModal.vue";
+import NoData from "@/components/TheUser/NoData.vue";
+import Pagination from "@/components/ThePagination/Pagination.vue";
+import Icon from "@/components/TheIcon/Icon.vue";
+import {ref, computed, defineProps} from "vue";
+import {ElTable} from "element-plus";
+import {useFastTextStore} from "../../store/settings";
+import Alert from "@/components/TheAlert/Alert.vue";
+
+
+//state
+const router = useRouter();
+const fastTextStore = useFastTextStore()
+const itemPerPage = ref(5);
+const currentPage = ref(1);
+const totalPage = ref(1);
+const multipleTableRef = ref();
+const multipleSelection = ref([]);
+const stagedItemToEdit = ref(null);
+const props = defineProps({
+  data: {
+    default: () => [],
+    type: Array,
+  },
+
+});
+const data = ref(props.data);
+const tableData = ref([]);
+const alert = ref({
+  text: "",
+  show: false,
+  alertType: "",
+  variant: "",
+  title: ''
+})
+
+const okAlert = () => {
+  confirmDeleteState.value.isDialogOpen = false
+  alert.value.show = true
+  alert.value.text = "Done successfully"
+  alert.value.title = "Success"
+  alert.value.alertType = "success"
+  alert.value.variant = "outlined"
+  setTimeout(() => {
+    alert.value.show = false
+  }, 3000);
+};
+const errorAlert = () => {
+  confirmDeleteState.value.isDialogOpen = false
+  alert.value.show = true
+  alert.value.text = "An error was encountered"
+  alert.value.title = "Error"
+  alert.value.alertType = "error"
+  alert.value.variant = "outlined"
+  setTimeout(() => {
+    alert.value.show = false
+  }, 3000);
+};
+
+tableData.value = props.data.data
+itemPerPage.value = props.data.meta.per_page
+totalPage.value = props.data.meta.total || 0
+
+const confirmDeleteState = ref({
+  type: "danger",
+  confirmText: "Yes",
+  cancelText: "Cancel",
+  isDialogOpen: false,
+  title: "Delete Employee?",
+  content: "Are you sure?",
+});
+const stagedItemToDelete = ref(null);
+
+//methods
+const getFastTextApi = async (page) => {
+  const result = await fastTextStore.getFastText(page)
+  if (result.status === 200) {
+    tableData.value = result.data.data
+    console.log('tableData.value')
+    console.log(tableData.value)
+    currentPage.value = result.data.meta.current_page
+  }
+}
+//======================================================================================================================
+const handleSelectionChange = (val) => {
+  multipleSelection.value = val;
+};
+//======================================================================================================================
+// const deleteItemHandler = async () => {
+//   const result = await fastTextStore.deleteItem(stagedItemToDelete.value.id)
+//   if (result.status === 200) {
+//     getFastTextApi()
+//     okAlert()
+//   } else {
+//     errorAlert()
+//   }
+//   confirmDeleteState.value.isDialogOpen = false
+// };
+//======================================================================================================================
+const deleteRow = (row) => {
+  stagedItemToDelete.value = row;
+  confirmDeleteState.value.content =
+      "Are you sure you want to delete? "
+  confirmDeleteState.value.isDialogOpen = true;
+};
+
+</script>
